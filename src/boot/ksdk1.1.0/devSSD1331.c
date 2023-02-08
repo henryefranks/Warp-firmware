@@ -16,6 +16,27 @@
 volatile uint8_t	inBuffer[1];
 volatile uint8_t	payloadBytes[1];
 
+#define ZSCALE 20.0f
+#define offset  0.0f
+#define width  30.0f
+
+typedef struct {
+    uint8_t r, g, b;
+} colour;
+
+typedef struct {
+    float x, y;
+} fpoint_2d;
+
+typedef struct {
+    float x, y, z;
+} fpoint_3d;
+
+void drawRect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, colour col);
+void drawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, colour col);
+void draw3DLine(fpoint_3d start, fpoint_3d end, colour col);
+void drawCube();
+void rotateCube(size_t angle);
 
 /*
  *	Override Warp firmware's use of these pins and define new aliases.
@@ -24,10 +45,17 @@ enum
 {
 	kSSD1331PinMOSI		= GPIO_MAKE_PIN(HW_GPIOA, 8),
 	kSSD1331PinSCK		= GPIO_MAKE_PIN(HW_GPIOA, 9),
-	kSSD1331PinCSn		= GPIO_MAKE_PIN(HW_GPIOB, 13),
+	kSSD1331PinCSn		= GPIO_MAKE_PIN(HW_GPIOA, 2),
 	kSSD1331PinDC		= GPIO_MAKE_PIN(HW_GPIOA, 12),
-	kSSD1331PinRST		= GPIO_MAKE_PIN(HW_GPIOB, 0),
+	kSSD1331PinRST		= GPIO_MAKE_PIN(HW_GPIOB, 3),
 };
+
+static float
+depthCalc(float z)
+{
+    //return (uint8_t)1 << (int)(z / ZSCALE);
+    return 1 + z / ZSCALE;
+}
 
 static int
 writeCommand(uint8_t commandByte)
@@ -65,6 +93,25 @@ writeCommand(uint8_t commandByte)
 }
 
 
+void
+devSSD1331clear()
+{
+	/*
+	 *	Clear Screen
+	 */
+	writeCommand(kSSD1331CommandCLEAR);
+	writeCommand(0x00);
+	writeCommand(0x00);
+	writeCommand(0x5F);
+	writeCommand(0x3F);
+}
+
+void
+devSSD1331drawCube()
+{
+    drawCube();
+    rotateCube(1);
+}
 
 int
 devSSD1331init(void)
@@ -77,7 +124,7 @@ devSSD1331init(void)
 	PORT_HAL_SetMuxMode(PORTA_BASE, 8u, kPortMuxAlt3);
 	PORT_HAL_SetMuxMode(PORTA_BASE, 9u, kPortMuxAlt3);
 
-	enableSPIpins();
+	warpEnableSPIpins();
 
 	/*
 	 *	Override Warp firmware's use of these pins.
@@ -146,23 +193,250 @@ devSSD1331init(void)
 	writeCommand(kSSD1331CommandFILL);
 	writeCommand(0x01);
 
-	/*
-	 *	Clear Screen
-	 */
-	writeCommand(kSSD1331CommandCLEAR);
-	writeCommand(0x00);
-	writeCommand(0x00);
-	writeCommand(0x5F);
-	writeCommand(0x3F);
 
-
+    devSSD1331clear();
 
 	/*
 	 *	Any post-initialization drawing commands go here.
 	 */
 	//...
 
+    devSSD1331drawCube();
 
+    //writeCommand(kSSD1331CommandDRAWRECT);
+
+    // start x, y
+    //writeCommand(0);
+    //writeCommand(0);
+
+    // end x, y
+    //writeCommand(95);
+    //writeCommand(62);
+
+    // outline
+    //writeCommand(0);
+    //writeCommand(255);
+    //writeCommand(0);
+
+    // fill
+    //writeCommand(0);
+    //writeCommand(255);
+    //writeCommand(0);
+
+    //drawRect(0, 0, 10, 10, {255, 0, 0});
 
 	return 0;
 }
+
+void
+drawRect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, colour col)
+{
+    writeCommand(kSSD1331CommandDRAWRECT);
+
+    // start x, y
+    writeCommand(x);
+    writeCommand(y);
+
+    // end x, y
+    writeCommand(x+w-1);
+    writeCommand(y+h-1);
+
+    // outline
+    writeCommand(col.r);
+    writeCommand(col.g);
+    writeCommand(col.b);
+
+    // fill
+    writeCommand(col.r);
+    writeCommand(col.g);
+    writeCommand(col.b);
+}
+
+void
+drawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, colour col)
+{
+    writeCommand(kSSD1331CommandDRAWLINE);
+
+    // start x, y
+    writeCommand(x1);
+    writeCommand(y1);
+
+    // end x, y
+    writeCommand(x2);
+    writeCommand(y2);
+
+    // color
+    writeCommand(col.r);
+    writeCommand(col.g);
+    writeCommand(col.b);
+}
+
+static int
+drawLine2(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, colour col)
+{
+	spi_status_t status;
+
+	GPIO_DRV_ClearPinOutput(kSSD1331PinCSn);
+    uint8_t buf[] = {
+        kSSD1331CommandDRAWLINE,
+        x1, y1,
+        x2, y2,
+        col.r, col.g, col.b
+    };
+	status = SPI_DRV_MasterTransferBlocking(0	/* master instance */,
+					NULL		/* spi_master_user_config_t */,
+					(const uint8_t * restrict)buf,
+					(uint8_t * restrict)&inBuffer[0],
+					8		/* transfer size */,
+					1000		/* timeout in microseconds (unlike I2C which is ms) */);
+
+	GPIO_DRV_SetPinOutput(kSSD1331PinCSn);
+
+    return status;
+}
+
+fpoint_2d
+rasterizePoint(fpoint_3d p)
+{
+    static const float WIDTH = 96.0f;
+    static const float HEIGHT = 64.0f;
+
+    fpoint_2d pt = {
+        (uint8_t) (WIDTH  / 2 + p.x / depthCalc(p.z) ),
+        (uint8_t) (HEIGHT / 2 + p.y / depthCalc(p.z) )
+    };
+
+    return pt;
+}
+
+void
+draw3DLine(fpoint_3d start, fpoint_3d end, colour col)
+{
+    fpoint_2d s = rasterizePoint(start);
+    fpoint_2d e = rasterizePoint(end);
+
+    drawLine2(s.x, s.y, e.x, e.y, col);
+}
+
+//void
+//draw3DRect(float width, float z, colour col)
+//{
+//    fpoint_2d origin = rasterizePoint(
+//        (fpoint_3d) { -width/2, -width/2, z }
+//    );
+//
+//    uint8_t start_x = (uint8_t) origin.x;
+//    uint8_t start_y = (uint8_t) origin.y;
+//    uint8_t w = (uint8_t) width / (1 + z/ZSCALE);
+//
+//    drawRect(start_x, start_y, w, w, col);
+//}
+
+static fpoint_3d cube[] = {
+    { -width/2, -width/2,   0.0f + offset },
+    {  width/2, -width/2,   0.0f + offset },
+    {  width/2,  width/2,   0.0f + offset },
+    { -width/2,  width/2,   0.0f + offset },
+    { -width/2, -width/2,  width + offset },
+    {  width/2, -width/2,  width + offset },
+    {  width/2,  width/2,  width + offset },
+    { -width/2,  width/2,  width + offset },
+};
+
+float ssin(size_t angle);
+float ccos(size_t angle);
+
+float ssin(size_t angle)
+{
+    static const float lookup[] = {
+        0.000,
+        0.174,
+        0.342,
+        0.500,
+        0.643,
+        0.766,
+        0.866,
+        0.940,
+        0.985,
+        1.000,
+        0.985,
+        0.940,
+        0.866,
+        0.766,
+        0.643,
+        0.500,
+        0.342,
+        0.174,
+        0.000
+    };
+
+    return lookup[angle];
+}
+
+float ccos(size_t angle)
+{
+    static const float lookup[] = {
+        1.000,
+        0.985,
+        0.940,
+        0.866,
+        0.766,
+        0.643,
+        0.500,
+        0.342,
+        0.174,
+        0.000,
+        -0.174,
+        -0.342,
+        -0.500,
+        -0.643,
+        -0.766,
+        -0.866,
+        -0.940,
+        -0.985,
+        -1.000
+    };
+
+    return lookup[angle];
+}
+
+void
+rotateCube(size_t angle)
+{
+    static const float zaxis = width/2 + offset;
+
+    float s = ssin(angle);
+    float c = ccos(angle);
+    warpPrint("%f - %f", s, c);
+
+    for (size_t i = 0; i < 8; i++)
+    {
+        float x = cube[i].x;
+        float z = cube[i].z - zaxis;
+        cube[i].x = c * x - s * z;
+        cube[i].z = s * x + c * z + zaxis;
+    }
+}
+
+void
+drawCube()
+{
+    #define col ( (colour) {255, 0, 0} )
+    size_t i = 0;
+
+    // front face
+    for (i = 0; i < 3; i++)
+        draw3DLine(cube[i], cube[i+1], col);
+    draw3DLine(cube[3], cube[0], col);
+    
+
+    // back face
+    for (i = 4; i < 7; i++)
+        draw3DLine(cube[i], cube[i+1], col);
+    draw3DLine(cube[7], cube[4], col);
+
+    // connect faces
+    for (i = 0; i < 4; i++)
+        draw3DLine(cube[i], cube[i+4], col);
+}
+

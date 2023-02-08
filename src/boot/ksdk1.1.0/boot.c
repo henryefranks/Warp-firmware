@@ -93,6 +93,11 @@
 	volatile WarpSPIDeviceState			deviceICE40State;
 #endif
 
+#if (WARP_BUILD_ENABLE_DEVSSD1331 || 1)
+	#include "devSSD1331.h"
+	volatile WarpSPIDeviceState			deviceSSD1331State;
+#endif
+
 #if (WARP_BUILD_ENABLE_DEVBMX055)
 	#include "devBMX055.h"
 	volatile WarpI2CDeviceState			deviceBMX055accelState;
@@ -1611,7 +1616,7 @@ main(void)
 	#endif
 
 	#if (WARP_BUILD_ENABLE_DEVMMA8451Q)
-		initMMA8451Q(	0x1C	/* i2cAddress */,	kWarpDefaultSupplyVoltageMillivoltsMMA8451Q	);
+		initMMA8451Q(	0x1D	/* i2cAddress */,	kWarpDefaultSupplyVoltageMillivoltsMMA8451Q	);
 	#endif
 
 	#if (WARP_BUILD_ENABLE_DEVLPS25H)
@@ -1993,6 +1998,13 @@ main(void)
 		}
 	#endif
 
+    devSSD1331init();
+    while(1) {
+		OSA_TimeDelay(50);
+        devSSD1331clear();
+        devSSD1331drawCube();
+    }
+
 	while (1)
 	{
 		/*
@@ -2001,6 +2013,7 @@ main(void)
 		 *	commands.
 		 */
 		printBootSplash(gWarpCurrentSupplyVoltage, menuRegisterAddress, &powerManagerCallbackStructure);
+
 
 		warpPrint("\rSelect:\n");
 		warpPrint("\r- 'a': set default sensor.\n");
