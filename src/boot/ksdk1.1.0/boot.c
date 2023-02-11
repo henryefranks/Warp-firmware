@@ -2006,12 +2006,23 @@ main(void)
 
 	#if ENABLE_CUBE
 	    devSSD1331init();
-        while(1) {
+        while(1)
+        {
             cls();
             drawSpinningCube();
             OSA_TimeDelay(25);
         }
 	#endif
+
+    // BEGIN LED TEST
+    /*
+    while(1)
+    {
+        blinkLED(GPIO_MAKE_PIN(HW_GPIOB, 10));
+        OSA_TimeDelay(1000);
+    }
+    */
+    // END LED TEST
 
 	devSSD1331init();
 
