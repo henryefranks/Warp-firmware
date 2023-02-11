@@ -1,0 +1,5 @@
+power on perm
+exec EnableRemarks
+unlock kinetis
+r
+go

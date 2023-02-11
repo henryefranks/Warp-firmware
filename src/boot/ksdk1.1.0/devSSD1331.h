@@ -45,4 +45,5 @@ typedef enum
 int	devSSD1331init(void);
 void devSSD1331clear();
 void devSSD1331drawCube();
+void devSSD1331drawLine();
 
