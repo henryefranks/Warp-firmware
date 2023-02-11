@@ -67,10 +67,10 @@
 #define							kWarpConstantStringErrorInvalidVoltage	"\rInvalid supply voltage [%d] mV!"
 #define							kWarpConstantStringErrorSanity		"\rSanity check failed!"
 
-//#if ENABLE_CUBE
-//    #include "cube.h"
-//    #include "gfx.h"
-//#endif
+#if ENABLE_CUBE
+    #include "cube.h"
+    #include "gfx.h"
+#endif
 
 
 #if (WARP_BUILD_ENABLE_DEVADXL362)
@@ -2004,17 +2004,19 @@ main(void)
 		}
 	#endif
 
-	//#if ENABLE_CUBE
-	//while(1) {
-	//	cls();
-	//	drawSpinningCube();
-	//	OSA_TimeDelay(25);
-	//}
-	//#endif
+	#if ENABLE_CUBE
+	    devSSD1331init();
+        while(1) {
+            cls();
+            drawSpinningCube();
+            OSA_TimeDelay(25);
+        }
+	#endif
+
+	devSSD1331init();
 
 	while (1)
 	{
-	    devSSD1331init();
 		/*
 		 *	Do not, e.g., lowPowerPinStates() on each iteration, because we actually
 		 *	want to use menu to progressiveley change the machine state with various

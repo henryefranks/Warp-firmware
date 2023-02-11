@@ -50,7 +50,6 @@ static void
 rotateCube()
 {
     static const float zaxis = width/2 + offset;
-
     static const float s = 0.08715574275f;
     static const float c = 0.99619469810f;
 
