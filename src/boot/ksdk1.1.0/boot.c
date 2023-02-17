@@ -2004,17 +2004,18 @@ main(void)
 		}
 	#endif
 
-	#if ENABLE_CUBE
-	    devSSD1331init();
-        while(1)
-        {
-            cls();
-            drawSpinningCube();
-            OSA_TimeDelay(25);
-        }
-	#endif
+    #if (WARP_BUILD_ENABLE_DEVSSD1331)
+        devSSD1331init();
 
-	devSSD1331init();
+        #if (ENABLE_CUBE)
+            while(1)
+            {
+                cls();
+                drawSpinningCube();
+                OSA_TimeDelay(25);
+            }
+        #endif
+    #endif
 
 	while (1)
 	{

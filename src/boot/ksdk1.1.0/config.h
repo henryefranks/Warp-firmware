@@ -59,6 +59,9 @@
 
 //#define		WARP_BUILD_ENABLE_FRDMKL03			0
 
+/*
+ * DISPLAY FUNCTIONS
+ */
 #define		WARP_BUILD_ENABLE_DEVSSD1331		1
 #define     ENABLE_CUBE                         0
 

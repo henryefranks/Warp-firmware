@@ -169,20 +169,20 @@ gpio_output_pin_user_config_t	outputPins[] = {
 		{
 			.pinName = kWarpPinUnusedPTA12,
 			.config.outputLogic = 1,
-			.config.slewRate = kPortFastSlewRate,
-			.config.driveStrength = kPortHighDriveStrength,
+			.config.slewRate = kPortSlowSlewRate,
+			.config.driveStrength = kPortLowDriveStrength,
 		},
 		{
 			.pinName = kWarpPinUnusedPTB0,
 			.config.outputLogic = 1,
-			.config.slewRate = kPortFastSlewRate,
-			.config.driveStrength = kPortHighDriveStrength,
+			.config.slewRate = kPortSlowSlewRate,
+			.config.driveStrength = kPortLowDriveStrength,
 		},
         {
 			.pinName = kWarpPinUnusedPTB13,
 			.config.outputLogic = 1,
-			.config.slewRate = kPortFastSlewRate,
-			.config.driveStrength = kPortHighDriveStrength,
+			.config.slewRate = kPortSlowSlewRate,
+			.config.driveStrength = kPortLowDriveStrength,
 		},
 	#endif
 
