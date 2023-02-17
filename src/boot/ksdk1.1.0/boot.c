@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <math.h>
 
 /*
  *	config.h needs to come first
@@ -178,6 +179,11 @@
 #if (WARP_BUILD_ENABLE_DEVRV8803C7)
 	#include "devRV8803C7.h"
 	volatile WarpI2CDeviceState			deviceRV8803C7State;
+#endif
+
+#if (WARP_BUILD_ENABLE_DEVINA219)
+	#include "devINA219.h"
+	volatile WarpI2CDeviceState			deviceINA219State;
 #endif
 
 #if (WARP_BUILD_ENABLE_DEVBGX)
@@ -2002,6 +2008,25 @@ main(void)
 			}
 			warpPrint("Should not get here...");
 		}
+	#endif
+
+	#if (WARP_BUILD_ENABLE_DEVINA219)
+		devINA219init(	0x40	/* i2cAddress */,	3300	);
+
+        warpPrint("BEGIN CURRENT MEASUREMENTS\n");
+
+        int current;
+        for (size_t i = 0; i < 1000; i++)
+        {
+            current = (int) devINA219getCurrent_uA();
+
+            warpPrint(" > Current [%d of 1000]: ", i);
+            if (current == NAN)
+                warpPrint("ERROR\n");
+            else
+                warpPrint("%d uA\n", current);
+        }
+        warpPrint("END CURRENT MEASUREMENTS\n");
 	#endif
 
     #if (WARP_BUILD_ENABLE_DEVSSD1331)
