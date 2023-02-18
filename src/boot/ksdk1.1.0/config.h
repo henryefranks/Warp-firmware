@@ -62,7 +62,7 @@
 /*
  * DISPLAY FUNCTIONS
  */
-#define		WARP_BUILD_ENABLE_DEVSSD1331		0
+#define		WARP_BUILD_ENABLE_DEVSSD1331		1
 #define     ENABLE_CUBE                         0
 
 /*

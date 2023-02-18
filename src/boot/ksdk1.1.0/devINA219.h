@@ -42,7 +42,7 @@ typedef enum { /* register map */
  */
 #define INA219_CAL         0xA000
 #define INA219_CURRENT_LSB 10
-#define INA219_POWER_LSB   200
+#define INA219_POWER_LSB   (20 * INA219_CURRENT_LSB)
 
 
 /* TABLES from INA219 Data Sheet
@@ -135,24 +135,47 @@ typedef enum { /* bus voltage range: 0 = 16V FSR, 1 = 32V FSR   */
 typedef struct __attribute__((packed)) {
     union {
         struct {
-            INA219Mode mode:      3; /* operating mode, see Table 6                   */
-            INA219ADCconfig sadc: 4; /* shunt ADC resolution/averaging, see Table 5   */
-            INA219ADCconfig badc: 4; /* bus ADC resolution/averaging, see Table 5     */
-            INA219Range pg:       2; /* PGA gain and range, see Table 4               */
-            INA219BusVRange brng: 1; /* bus voltage range, see enum definition        */
-            uint16_t :            1; /* UNUSED                                        */
-            uint16_t rst:         1; /* reset: set to 1 to reset IC, self-clears      */
-        };
+            INA219Mode mode:      3; /* operating mode                        */
+            INA219ADCconfig sadc: 4; /* shunt ADC resolution/averaging        */
+            INA219ADCconfig badc: 4; /* bus ADC resolution/averaging          */
+            INA219Range pg:       2; /* PGA gain and range                    */
+            INA219BusVRange brng: 1; /* bus voltage range                     */
+            uint16_t :            1; /* UNUSED                                */
+            uint16_t rst:         1; /* reset device (self-clears)            */
+        } __attribute__((packed));
         uint16_t raw_val;
     };
 } ina219_config_t;
 
 typedef struct __attribute__((packed)) {
-    uint16_t ovf:  1; /* math overflow flag                                   */
-    uint16_t cnvr: 1; /* conversion ready flag                                */
-    uint16_t:      1; /* UNUSED                                               */
-    uint16_t bd:  13; /* bus voltage data                                     */
+    union {
+        struct {
+            uint16_t ovf:  1; /* math overflow flag                           */
+            uint16_t cnvr: 1; /* conversion ready flag                        */
+            uint16_t:      1; /* UNUSED                                       */
+            uint16_t bd:  13; /* bus voltage data                             */
+        } __attribute__((packed));
+        struct {
+            uint8_t lsb, msb;
+        } __attribute__((packed));
+    };
 } ina219_reg_bus_voltage_t;
+
+typedef struct {
+    /* because reading the registers _should_ be performed in a certain order:
+     * 0. (shunt voltage)
+     * 1. bus voltage   - wait for conv ready
+     * 2. current
+     * 3. power         - clears conv ready
+     * 
+     * we want to return a set of coherent readings together.
+     * bus voltage also includes a flag for conv overflow,
+     * so return that as an error indicator.
+     */
+    bool error;
+    unsigned int busVoltage, power;
+    int current, shuntVoltage;
+} ina219_reading_set_t;
 
 static const ina219_config_t config = {
     .mode = ina219_mode_shunt_bus_cont,
@@ -175,6 +198,18 @@ devINA219writeRegisterPointer(INA219Register deviceRegister);
 WarpStatus
 devINA219read(void);
 
+int
+devINA219getCurrent(void);
+
 unsigned int
-devINA219getCurrent_uA(void);
+devINA219getBusVoltage(void);
+
+int
+devINA219getShuntVoltage(void);
+
+unsigned int
+devINA219getPower(void);
+
+ina219_reading_set_t
+devINA219readAll(void);
 

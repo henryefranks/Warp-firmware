@@ -2010,24 +2010,6 @@ main(void)
 		}
 	#endif
 
-	#if (WARP_BUILD_ENABLE_DEVINA219)
-		devINA219init(	0x40	/* i2cAddress */,	3300	);
-
-        warpPrint("BEGIN CURRENT MEASUREMENTS\n");
-
-        int current;
-        for (size_t i = 0; i < 1000; i++)
-        {
-            current = (int) devINA219getCurrent_uA();
-
-            warpPrint(" > Current [%d of 1000]: ", i);
-            if (current == NAN)
-                warpPrint("ERROR\n");
-            else
-                warpPrint("%d uA\n", current);
-        }
-        warpPrint("END CURRENT MEASUREMENTS\n");
-	#endif
 
     #if (WARP_BUILD_ENABLE_DEVSSD1331)
         devSSD1331init();
@@ -2041,6 +2023,38 @@ main(void)
             }
         #endif
     #endif
+
+	#if (WARP_BUILD_ENABLE_DEVINA219)
+		devINA219init(	0x40	/* i2cAddress */,	3300	);
+
+        warpPrint("BEGIN CURRENT MEASUREMENTS\n");
+
+        int current, shuntVoltage;
+        unsigned int busVoltage, power;
+
+        for (size_t i = 0; i < 1000; i++)
+        {
+            current = devINA219getCurrent();
+            shuntVoltage = devINA219getShuntVoltage();
+            busVoltage = devINA219getBusVoltage();
+            power = devINA219getPower();
+
+            warpPrint(" > Reading [%4d of 1000]: ", i+1);
+            /*if (current == 0 || busVoltage == 0 || shuntVoltage == 0)
+                warpPrint("ERROR\n");
+            else*/
+            warpPrint("Current: %6d uA", current);
+            warpPrint(" // ");
+            warpPrint("Bus Voltage: %4d mV", busVoltage);
+            warpPrint(" // ");
+            warpPrint("Shunt Voltage: %4d uV", shuntVoltage);
+            warpPrint(" // ");
+            warpPrint("Power: %4d uW", power);
+            warpPrint("\n");
+        }
+        warpPrint("END CURRENT MEASUREMENTS\n");
+	#endif
+
 
 	while (1)
 	{

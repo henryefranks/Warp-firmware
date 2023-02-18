@@ -22,6 +22,7 @@
 
 #include "devINA219.h"
 
+#define INA219_DEBUG 0
 
 extern volatile WarpI2CDeviceState	deviceINA219State;
 
@@ -40,8 +41,6 @@ devINA219init(const uint8_t i2cAddress, uint16_t operatingVoltageMillivolts)
     devINA219writeRegister(kINA219RegisterCalibration, INA219_CAL);
 
     OSA_TimeDelay(100);
-
-    devINA219writeRegisterPointer(kINA219RegisterCurrent);
 
     return;
 }
@@ -155,22 +154,127 @@ devINA219read(void)
 	return kWarpStatusOK;
 }
 
-extern void warpPrint(const char *fmt, ...);
+#if (INA219_DEBUG)
+    extern void warpPrint(const char *fmt, ...);
+#endif
 
-unsigned int
-devINA219getCurrent_uA(void)
+int
+devINA219getCurrent(void)
 {
     uint16_t current_raw;
+    WarpStatus status;
 
-    if (devINA219read() != kWarpStatusOK)  /* read from device */
-        return NAN;                       /* error condition  */
+    /* set register pointer to current */
+    status = devINA219writeRegisterPointer(kINA219RegisterCurrent);
+    if (status != kWarpStatusOK) return 0; /* error condition  */
 
-    current_raw = (uint16_t) (
+    /* read from device */
+    status = devINA219read();
+    if (status != kWarpStatusOK) return 0; /* error condition  */
+
+    current_raw = (int16_t) (
         deviceINA219State.i2cBuffer[1] |
         deviceINA219State.i2cBuffer[0] << 8
     );
 
-    return current_raw * INA219_CURRENT_LSB;
+    return (int) (current_raw * INA219_CURRENT_LSB);
 }
 
+unsigned int
+devINA219getBusVoltage(void)
+{
+    ina219_reg_bus_voltage_t voltage_raw;
+    WarpStatus status;
+
+    /* set register pointer to current */
+    status = devINA219writeRegisterPointer(kINA219RegisterBusVoltage);
+    if (status != kWarpStatusOK) return 0; /* error condition  */
+
+    /* read from device */
+    status = devINA219read();
+    if (status != kWarpStatusOK) return 0; /* error condition  */
+
+    voltage_raw.lsb = deviceINA219State.i2cBuffer[1];
+    voltage_raw.msb = deviceINA219State.i2cBuffer[0];
+
+    /* LSB = 4mV */
+    return (unsigned int) (voltage_raw.bd * 4);
+}
+
+int
+devINA219getShuntVoltage(void)
+{
+    int16_t voltage_raw;
+    WarpStatus status;
+
+    /* set register pointer to current */
+    status = devINA219writeRegisterPointer(kINA219RegisterShuntVoltage);
+    if (status != kWarpStatusOK) return 0; /* error condition  */
+
+    /* read from device */
+    status = devINA219read();
+    if (status != kWarpStatusOK) return 0; /* error condition  */
+
+    voltage_raw = (int16_t) (
+        deviceINA219State.i2cBuffer[1] |
+        deviceINA219State.i2cBuffer[0] << 8
+    );
+
+    /* LSB = 10uV */
+    return (int) (voltage_raw * 10);
+}
+
+
+unsigned int
+devINA219getPower(void)
+{
+    uint16_t power_raw;
+    WarpStatus status;
+
+    /* set register pointer to current */
+    status = devINA219writeRegisterPointer(kINA219RegisterPower);
+    if (status != kWarpStatusOK) return 0; /* error condition  */
+
+    /* read from device */
+    status = devINA219read();
+    if (status != kWarpStatusOK) return 0; /* error condition  */
+
+    power_raw = (uint16_t) (
+        deviceINA219State.i2cBuffer[1] |
+        deviceINA219State.i2cBuffer[0] << 8
+    );
+
+    /* LSB = 4mV */
+    return (unsigned int) (power_raw * INA219_POWER_LSB);
+}
+
+ina219_reading_set_t
+devINA219readAll(void)
+{
+    WarpStatus status;
+
+    ina219_reading_set_t res;
+    ina219_reg_bus_voltage_t bus_voltage;
+
+    static const ina219_reading_set_t error_val = { .error = true };
+    
+    status = devINA219writeRegisterPointer(kINA219RegisterBusVoltage);
+    if (status != kWarpStatusOK) return error_val; /* error condition  */
+
+    do {
+        /* read from device */
+        status = devINA219read();
+        if (status != kWarpStatusOK) return error_val; /* error condition  */
+
+        bus_voltage.lsb = deviceINA219State.i2cBuffer[1];
+        bus_voltage.msb = deviceINA219State.i2cBuffer[0];
+    } while (bus_voltage.cnvr == 0);
+
+    res.busVoltage = bus_voltage.bd;
+    res.current = devINA219getCurrent();
+    res.shuntVoltage = devINA219getShuntVoltage();
+    res.power = devINA219getPower();
+
+    return res;
+}
 
