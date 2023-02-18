@@ -2027,14 +2027,16 @@ main(void)
 	#if (WARP_BUILD_ENABLE_DEVINA219)
 		devINA219init(	0x40	/* i2cAddress */,	3300	);
 
-        warpPrint("BEGIN CURRENT MEASUREMENTS\n");
+        warpPrint("\nCUT BELOW FOR CSV\n");
+        warpPrint("(Warning: do not cut screen with scissors.)\n");
+        warpPrint("--------------------------------------------------\n");
+        warpPrint("Current (uA), Bus Voltage (mV), ");
+        warpPrint("Shunt Voltage (uV), Power (uW)\n");
 
         ina219_reading_set_t readings;
 
         for (size_t i = 0; i < 1000; i++)
         {
-            warpPrint(" > Reading [%4d of 1000]: ", i+1);
-
             /* blocking call to read all registers
              *
              * this waits for conversion ready, and sets
@@ -2044,25 +2046,20 @@ main(void)
              *   this is NOT bulletproof and may return 0
              *   for some readings if there was a problem
              */
-            readings = devINA219readAllTriggered();
+            do    readings = devINA219readAllTriggered();
+            while (readings.error);
 
-            if (readings.error) warpPrint("ERROR\n");
-            else {
-                warpPrint("Current: %6d uA", readings.current);
-
-                warpPrint(" // ");
-                warpPrint("Bus Voltage: %4d mV", readings.busVoltage);
-
-                warpPrint(" // ");
-                warpPrint("Shunt Voltage: %4d uV", readings.shuntVoltage);
-
-                warpPrint(" // ");
-                warpPrint("Power: %4d uW", readings.power);
-
-                warpPrint("\n");
-            }
+            warpPrint(
+                "%12d, %16d, %18d, %10d\n",
+                readings.current,
+                readings.busVoltage,
+                readings.shuntVoltage,
+                readings.power
+            );
         }
-        warpPrint("END CURRENT MEASUREMENTS\n");
+
+        warpPrint("--------------------------------------------------\n");
+        warpPrint("END oF CSV\n\n");
 	#endif
 
 
