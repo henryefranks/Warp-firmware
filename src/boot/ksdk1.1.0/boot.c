@@ -2029,28 +2029,38 @@ main(void)
 
         warpPrint("BEGIN CURRENT MEASUREMENTS\n");
 
-        int current, shuntVoltage;
-        unsigned int busVoltage, power;
+        ina219_reading_set_t readings;
 
         for (size_t i = 0; i < 1000; i++)
         {
-            current = devINA219getCurrent();
-            shuntVoltage = devINA219getShuntVoltage();
-            busVoltage = devINA219getBusVoltage();
-            power = devINA219getPower();
-
             warpPrint(" > Reading [%4d of 1000]: ", i+1);
-            /*if (current == 0 || busVoltage == 0 || shuntVoltage == 0)
-                warpPrint("ERROR\n");
-            else*/
-            warpPrint("Current: %6d uA", current);
-            warpPrint(" // ");
-            warpPrint("Bus Voltage: %4d mV", busVoltage);
-            warpPrint(" // ");
-            warpPrint("Shunt Voltage: %4d uV", shuntVoltage);
-            warpPrint(" // ");
-            warpPrint("Power: %4d uW", power);
-            warpPrint("\n");
+
+            /* blocking call to read all registers
+             *
+             * this waits for conversion ready, and sets
+             * an error bit if there was a problem
+             *
+             * NOTE:
+             *   this is NOT bulletproof and may return 0
+             *   for some readings if there was a problem
+             */
+            readings = devINA219readAll();
+
+            if (readings.error) warpPrint("ERROR\n");
+            else {
+                warpPrint("Current: %6d uA", readings.current);
+
+                warpPrint(" // ");
+                warpPrint("Bus Voltage: %4d mV", readings.busVoltage);
+
+                warpPrint(" // ");
+                warpPrint("Shunt Voltage: %4d uV", readings.shuntVoltage);
+
+                warpPrint(" // ");
+                warpPrint("Power: %4d uW", readings.power);
+
+                warpPrint("\n");
+            }
         }
         warpPrint("END CURRENT MEASUREMENTS\n");
 	#endif

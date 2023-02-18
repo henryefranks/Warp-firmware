@@ -257,6 +257,15 @@ devINA219readAll(void)
     ina219_reg_bus_voltage_t bus_voltage;
 
     static const ina219_reading_set_t error_val = { .error = true };
+
+    res.error = false;
+
+    /* write config to trigger a conversion */
+    status = devINA219writeRegister(kINA219RegisterConfig, config.raw_val);
+    if (status != kWarpStatusOK) return error_val; /* error condition  */
+
+    /* small delay to allow conv to propagate */
+    OSA_TimeDelay(10);
     
     status = devINA219writeRegisterPointer(kINA219RegisterBusVoltage);
     if (status != kWarpStatusOK) return error_val; /* error condition  */
@@ -270,7 +279,7 @@ devINA219readAll(void)
         bus_voltage.msb = deviceINA219State.i2cBuffer[0];
     } while (bus_voltage.cnvr == 0);
 
-    res.busVoltage = bus_voltage.bd;
+    res.busVoltage = bus_voltage.bd * 4;
     res.current = devINA219getCurrent();
     res.shuntVoltage = devINA219getShuntVoltage();
     res.power = devINA219getPower();

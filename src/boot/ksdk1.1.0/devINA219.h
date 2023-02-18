@@ -178,7 +178,7 @@ typedef struct {
 } ina219_reading_set_t;
 
 static const ina219_config_t config = {
-    .mode = ina219_mode_shunt_bus_cont,
+    .mode = ina219_mode_shunt_bus_trig,
     .sadc = ina219_adc_samples_1,
     .badc = ina219_adc_mode_12bit,
       .pg = ina219_pg_range_40mv,
