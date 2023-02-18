@@ -249,7 +249,7 @@ devINA219getPower(void)
 }
 
 ina219_reading_set_t
-devINA219readAll(void)
+devINA219readAllTriggered(void)
 {
     WarpStatus status;
 

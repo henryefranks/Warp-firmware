@@ -2044,7 +2044,7 @@ main(void)
              *   this is NOT bulletproof and may return 0
              *   for some readings if there was a problem
              */
-            readings = devINA219readAll();
+            readings = devINA219readAllTriggered();
 
             if (readings.error) warpPrint("ERROR\n");
             else {
