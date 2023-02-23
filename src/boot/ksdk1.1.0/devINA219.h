@@ -193,10 +193,13 @@ WarpStatus
 devINA219writeRegister(INA219Register deviceRegister, uint16_t payload);
 
 WarpStatus
+devINA219readRegister(INA219Register deviceRegister);
+
+WarpStatus
 devINA219writeRegisterPointer(INA219Register deviceRegister);
 
 WarpStatus
-devINA219read(void);
+devINA219readRegisterPointer(void);
 
 int
 devINA219getCurrent(void);

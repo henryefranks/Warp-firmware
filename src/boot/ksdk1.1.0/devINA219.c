@@ -22,18 +22,19 @@
 
 #include "devINA219.h"
 
-#define INA219_DEBUG 0
-
 extern volatile WarpI2CDeviceState	deviceINA219State;
 
 extern volatile uint32_t		gWarpI2cBaudRateKbps;
 extern volatile uint32_t		gWarpI2cTimeoutMilliseconds;
 extern volatile uint32_t		gWarpSupplySettlingDelayMilliseconds;
 
+extern void warpEnableI2Cpins(void);
 
 void
 devINA219init(const uint8_t i2cAddress, uint16_t operatingVoltageMillivolts)
 {
+    warpEnableI2Cpins();
+
     deviceINA219State.i2cAddress = i2cAddress;
     deviceINA219State.operatingVoltageMillivolts = operatingVoltageMillivolts;
 
@@ -48,7 +49,7 @@ devINA219init(const uint8_t i2cAddress, uint16_t operatingVoltageMillivolts)
 WarpStatus
 devINA219writeRegister(INA219Register deviceRegister, uint16_t payload)
 {
-	uint8_t		payloadByte[2], commandByte[1];
+	uint8_t		payloadByte[2];
 	i2c_status_t	status;
 
     if (deviceRegister > 0x05) {
@@ -62,7 +63,6 @@ devINA219writeRegister(INA219Register deviceRegister, uint16_t payload)
 	};
 
 	warpScaleSupplyVoltage(deviceINA219State.operatingVoltageMillivolts);
-	commandByte[0] = deviceRegister;
 	payloadByte[0] = (uint8_t) (payload >> 8);
 	payloadByte[1] = (uint8_t) (payload & 0xFF);
 	warpEnableI2Cpins();
@@ -70,7 +70,7 @@ devINA219writeRegister(INA219Register deviceRegister, uint16_t payload)
 	status = I2C_DRV_MasterSendDataBlocking(
 							0 /* I2C instance */,
 							&slave,
-							commandByte,
+							(uint8_t *) &deviceRegister,
 							1,
 							payloadByte,
 							2,
@@ -85,9 +85,39 @@ devINA219writeRegister(INA219Register deviceRegister, uint16_t payload)
 }
 
 WarpStatus
+devINA219readRegister(INA219Register deviceRegister)
+{
+	i2c_status_t	status;
+
+	i2c_device_t slave =
+	{
+		.address = deviceINA219State.i2cAddress,
+		.baudRate_kbps = gWarpI2cBaudRateKbps
+	};
+
+	warpScaleSupplyVoltage(deviceINA219State.operatingVoltageMillivolts);
+	warpEnableI2Cpins();
+
+	status = I2C_DRV_MasterReceiveDataBlocking(
+							0 /* I2C instance */,
+							&slave,
+							(uint8_t *) &deviceRegister,
+							1,
+							(uint8_t *)deviceINA219State.i2cBuffer,
+							2,
+							gWarpI2cTimeoutMilliseconds);
+
+	if (status != kStatus_I2C_Success)
+	{
+		return kWarpStatusDeviceCommunicationFailed;
+	}
+
+	return kWarpStatusOK;
+}
+
+WarpStatus
 devINA219writeRegisterPointer(INA219Register deviceRegister)
 {
-	uint8_t		commandByte[1];
 	i2c_status_t	status;
 
     if (deviceRegister > 0x05) {
@@ -101,13 +131,12 @@ devINA219writeRegisterPointer(INA219Register deviceRegister)
 	};
 
 	warpScaleSupplyVoltage(deviceINA219State.operatingVoltageMillivolts);
-	commandByte[0] = deviceRegister;
 	warpEnableI2Cpins();
 
 	status = I2C_DRV_MasterSendDataBlocking(
 							0 /* I2C instance */,
 							&slave,
-							commandByte,
+							(uint8_t *) &deviceRegister,
 							1,
 							NULL,
 							0,
@@ -122,11 +151,9 @@ devINA219writeRegisterPointer(INA219Register deviceRegister)
 }
 
 WarpStatus
-devINA219read(void)
+devINA219readRegisterPointer(void)
 {
 	i2c_status_t	status;
-
-	USED(2);
 
 	i2c_device_t slave =
 	{
@@ -154,22 +181,14 @@ devINA219read(void)
 	return kWarpStatusOK;
 }
 
-#if (INA219_DEBUG)
-    extern void warpPrint(const char *fmt, ...);
-#endif
-
 int
 devINA219getCurrent(void)
 {
     uint16_t current_raw;
     WarpStatus status;
 
-    /* set register pointer to current */
-    status = devINA219writeRegisterPointer(kINA219RegisterCurrent);
-    if (status != kWarpStatusOK) return 0; /* error condition  */
-
     /* read from device */
-    status = devINA219read();
+    status = devINA219readRegister(kINA219RegisterCurrent);
     if (status != kWarpStatusOK) return 0; /* error condition  */
 
     current_raw = (int16_t) (
@@ -186,12 +205,8 @@ devINA219getBusVoltage(void)
     ina219_reg_bus_voltage_t voltage_raw;
     WarpStatus status;
 
-    /* set register pointer to current */
-    status = devINA219writeRegisterPointer(kINA219RegisterBusVoltage);
-    if (status != kWarpStatusOK) return 0; /* error condition  */
-
     /* read from device */
-    status = devINA219read();
+    status = devINA219readRegister(kINA219RegisterBusVoltage);
     if (status != kWarpStatusOK) return 0; /* error condition  */
 
     voltage_raw.lsb = deviceINA219State.i2cBuffer[1];
@@ -207,12 +222,8 @@ devINA219getShuntVoltage(void)
     int16_t voltage_raw;
     WarpStatus status;
 
-    /* set register pointer to current */
-    status = devINA219writeRegisterPointer(kINA219RegisterShuntVoltage);
-    if (status != kWarpStatusOK) return 0; /* error condition  */
-
     /* read from device */
-    status = devINA219read();
+    status = devINA219readRegister(kINA219RegisterShuntVoltage);
     if (status != kWarpStatusOK) return 0; /* error condition  */
 
     voltage_raw = (int16_t) (
@@ -231,12 +242,8 @@ devINA219getPower(void)
     uint16_t power_raw;
     WarpStatus status;
 
-    /* set register pointer to current */
-    status = devINA219writeRegisterPointer(kINA219RegisterPower);
-    if (status != kWarpStatusOK) return 0; /* error condition  */
-
     /* read from device */
-    status = devINA219read();
+    status = devINA219readRegister(kINA219RegisterPower);
     if (status != kWarpStatusOK) return 0; /* error condition  */
 
     power_raw = (uint16_t) (
@@ -272,7 +279,7 @@ devINA219readAllTriggered(void)
 
     do {
         /* read from device */
-        status = devINA219read();
+        status = devINA219readRegisterPointer();
         if (status != kWarpStatusOK) return error_val; /* error condition  */
 
         bus_voltage.lsb = deviceINA219State.i2cBuffer[1];
