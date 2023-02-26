@@ -1,0 +1,9 @@
+{
+    "makefile.makefilePath": "Makefile",
+    "makefile.configurations": [
+        {
+            "name": "bare-metal-arm",
+            "makeArgs": ["ARMGCC_DIR=/Users/harryfranks/4B25/bare-metal-arm/gcc-arm-none-eabi-4_8-2014q1"]
+        }
+    ]
+}

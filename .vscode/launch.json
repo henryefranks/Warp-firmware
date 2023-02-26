@@ -10,6 +10,8 @@
             "request": "launch",
             "cwd": "${workspaceRoot}",
 
+            "preLaunchTask": "make",
+
             "logging": {
                 "exceptions": true,
                 "moduleLoad": true,

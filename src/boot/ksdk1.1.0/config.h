@@ -62,13 +62,13 @@
 /*
  * DISPLAY FUNCTIONS
  */
-#define		WARP_BUILD_ENABLE_DEVSSD1331		0
+#define		WARP_BUILD_ENABLE_DEVSSD1331		1
 #define     ENABLE_CUBE                         0
 
 /*
  * CURRENT MEASUREMENT
  */
-#define		WARP_BUILD_ENABLE_DEVINA219		0
+#define		WARP_BUILD_ENABLE_DEVINA219		1
 
 /*
  *	Force the required configuration if WARP_BUILD_ENABLE_GLAUX_VARIANT is set
