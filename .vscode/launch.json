@@ -24,7 +24,7 @@
             "debugServerPath": "/usr/local/bin/JLinkGDBServer",
             "debugServerArgs": "-select USB -device MKL03Z32XXX4 -if SWD -speed 10000 -port 2331 -swoport 2332 -telnetport 2333 -singlerun",
             
-            "program": "/Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/debug/Warp.srec",
+            "program": "/Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/release/Warp.srec",
             "targetArchitecture": "ARM",
 
             "stopAtEntry": true,
@@ -36,10 +36,10 @@
             "filterStdout": true,
 
             "setupCommands": [
-                {"text": "exec-file /Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/debug/Warp.srec"},
-                {"text": "symbol-file /Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/debug/Warp.debug"},
-                {"text": "source ../PyCortexMDebug/scripts/gdb.py"},
-                {"text": "svd_load ./tools/MKL03Z4.svd"},
+                {"text": "exec-file /Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/release/Warp.srec"},
+                {"text": "symbol-file /Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/release/Warp.debug"},
+                // {"text": "source ../PyCortexMDebug/scripts/gdb.py"},
+                // {"text": "svd_load ./tools/MKL03Z4.svd"},
                 {"text": "target remote localhost:2331"},
                 {"text": "monitor flash breakpoints = 1"},
                 {"text": "monitor flash download = 1"},

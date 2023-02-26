@@ -2070,7 +2070,7 @@ main(void)
 		devINA219init(	0x40	/* i2cAddress */,	3300	);
 	#endif
 
-	while(1);
+	// while(1);
 
 
 	while (1)
