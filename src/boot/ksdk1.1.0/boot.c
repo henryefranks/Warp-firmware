@@ -249,7 +249,47 @@ WarpStatus						writeBytesToSpi(uint8_t *  payloadBytes, int payloadLength);
 
 void							warpLowPowerSecondsSleep(uint32_t sleepSeconds, bool forceAllPinsIntoLowPowerState);
 
+void
+printINA219CurrentReadings(void)
+{
+	/* PRINT 1000 READINGS FROM THE INA IN CSV FORMAT */
+	/* INCLUDES HANDY DELIMITERS TO HELP EXTRACT DATA */
+	warpPrint("\nCUT BELOW FOR CSV\n");
+	warpPrint("(Warning: do not cut screen with scissors.)\n");
+	warpPrint("--------------------------------------------------\n");
+	warpPrint("Current (uA), Bus Voltage (mV), ");
+	warpPrint("Shunt Voltage (uV), Power (uW)\n");
 
+	ina219_reading_set_t readings;
+
+	for (size_t i = 0; i < 1000; i++)
+	{
+		/* blocking call to read all registers
+			*
+			* this waits for conversion ready, and sets
+			* an error bit if there was a problem
+			*
+			* NOTE:
+			*   this is NOT bulletproof and may return 0
+			*   for some readings if there was a problem
+			* 
+			*   this routine also hangs if there's an I2C error
+			*/
+		do    readings = devINA219readAllTriggered();
+		while (readings.error);
+
+		warpPrint(
+			"%12d, %16d, %18d, %10d\n",
+			readings.current,
+			readings.busVoltage,
+			readings.shuntVoltage,
+			readings.power
+		);
+	}
+
+	warpPrint("--------------------------------------------------\n");
+	warpPrint("END oF CSV\n\n");
+}
 
 /*
  *	Derived from KSDK power_manager_demo.c BEGIN>>>
@@ -2026,40 +2066,6 @@ main(void)
 
 	#if (WARP_BUILD_ENABLE_DEVINA219)
 		devINA219init(	0x40	/* i2cAddress */,	3300	);
-
-        warpPrint("\nCUT BELOW FOR CSV\n");
-        warpPrint("(Warning: do not cut screen with scissors.)\n");
-        warpPrint("--------------------------------------------------\n");
-        warpPrint("Current (uA), Bus Voltage (mV), ");
-        warpPrint("Shunt Voltage (uV), Power (uW)\n");
-
-        ina219_reading_set_t readings;
-
-        for (size_t i = 0; i < 1000; i++)
-        {
-            /* blocking call to read all registers
-             *
-             * this waits for conversion ready, and sets
-             * an error bit if there was a problem
-             *
-             * NOTE:
-             *   this is NOT bulletproof and may return 0
-             *   for some readings if there was a problem
-             */
-            do    readings = devINA219readAllTriggered();
-            while (readings.error);
-
-            warpPrint(
-                "%12d, %16d, %18d, %10d\n",
-                readings.current,
-                readings.busVoltage,
-                readings.shuntVoltage,
-                readings.power
-            );
-        }
-
-        warpPrint("--------------------------------------------------\n");
-        warpPrint("END oF CSV\n\n");
 	#endif
 
 
@@ -2112,6 +2118,10 @@ main(void)
 
 		warpPrint("\r- 'x': disable SWD and spin for 10 secs.\n");
 		warpPrint("\r- 'z': perpetually dump all sensor data.\n");
+
+		#if (WARP_BUILD_ENABLE_DEVINA219)
+			warpPrint("\r- 'Q': print 1000 current readings from INA219.\n");
+		#endif
 
 		warpPrint("\rEnter selection> ");
 		key = warpWaitKey();
@@ -3128,6 +3138,14 @@ main(void)
 				break;
 			}
 
+
+			#if (WARP_BUILD_ENABLE_DEVINA219)
+				case 'Q':
+				{
+					printINA219CurrentReadings();
+					break;
+				}
+			#endif
 
 			/*
 			 *	Ignore naked returns.
