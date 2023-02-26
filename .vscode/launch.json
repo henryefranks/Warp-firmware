@@ -1,0 +1,53 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug J-Link",
+            "type": "cppdbg",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+
+            "logging": {
+                "exceptions": true,
+                "moduleLoad": true,
+                "programOutput": true,
+                "engineLogging": true,
+                "trace": true,
+                "traceResponse": true,
+            }, 
+
+            "MIMode": "gdb",
+            "miDebuggerPath": "/Users/harryfranks/4B25/bare-metal-arm/gcc-arm-none-eabi-4_8-2014q1/bin/arm-none-eabi-gdb",
+            "debugServerPath": "/usr/local/bin/JLinkGDBServer",
+            "debugServerArgs": "-select USB -device MKL03Z32XXX4 -if SWD -speed 10000 -port 2331 -swoport 2332 -telnetport 2333 -singlerun",
+            
+            "program": "/Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/debug/Warp.srec",
+            "targetArchitecture": "ARM",
+
+            "stopAtEntry": true,
+            // "stopAtEntry": false,
+            "serverStarted": "Connected to target",
+            "serverLaunchTimeout": 5000,
+
+            "filterStderr": false,
+            "filterStdout": true,
+
+            "setupCommands": [
+                {"text": "exec-file /Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/debug/Warp.srec"},
+                {"text": "symbol-file /Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/debug/Warp.debug"},
+                {"text": "source ../PyCortexMDebug/scripts/gdb.py"},
+                {"text": "svd_load ./tools/MKL03Z4.svd"},
+                {"text": "target remote localhost:2331"},
+                {"text": "monitor flash breakpoints = 1"},
+                {"text": "monitor flash download = 1"},
+                {"text": "load"},
+                {"text": "monitor reset"},
+            ],
+
+            "launchCompleteCommand": "exec-continue",
+        }
+    ]
+}
