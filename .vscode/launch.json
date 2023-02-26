@@ -10,7 +10,7 @@
             "request": "launch",
             "cwd": "${workspaceRoot}",
 
-            "preLaunchTask": "make",
+            "preLaunchTask": "Warp",
 
             "logging": {
                 "exceptions": true,

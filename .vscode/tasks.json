@@ -4,8 +4,44 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "make",
-            "command": "${command:makefile.buildCleanTarget}",
-          },
+          "label": "make",
+          "command": "${command:makefile.buildCleanTarget}",
+        },
+        {
+          "label": "J-Link RTT Client",
+          "type": "shell",
+          "command": "JLinkRTTClient",
+          "isBackground": true,
+
+          // This task is run before some debug tasks.
+          // Problem is, it's a watch script, and since it never exits, VSCode
+          // complains. All this is needed so VSCode just lets it run.
+          "problemMatcher": [
+            {
+              "pattern": [
+                {
+                  "regexp": ".",
+                  "file": 1,
+                  "location": 2,
+                  "message": 3
+                }
+              ],
+              "background": {
+                "activeOnStart": true,
+                "beginsPattern": ".",
+                "endsPattern": ".",
+              }
+            }
+          ]
+        },
+
+        {
+          "label": "Warp",
+          "dependsOn": [
+            "make",
+            "J-Link RTT Client"
+          ],
+          "dependsOrder": "sequence"
+        }
     ]
   }
