@@ -191,6 +191,11 @@
 	volatile WarpUARTDeviceState			deviceBGXState;
 #endif
 
+#if (WARP_BUILD_ENABLE_ACTIVITY)
+	#include "activity/devMMA8451Q.h"
+	volatile WarpSPIDeviceState			deviceMMA8451QState;
+#endif
+
 
 volatile i2c_master_state_t				i2cMasterState;
 volatile spi_master_state_t				spiMasterState;
@@ -2057,7 +2062,7 @@ main(void)
         devSSD1331init();
 
         #if (ENABLE_CUBE)
-            while(1)
+            while (1)
             {
                 cls();
                 drawSpinningCube();
@@ -2070,9 +2075,12 @@ main(void)
 		devINA219init(	0x40	/* i2cAddress */,	3300	);
 	#endif
 
-	// while(1);
+	#if (WARP_BUILD_ENABLE_ACTIVITY)
+		
+	#endif
 
 
+	#if (WARP_BUILD_ENABLE_TERMINAL)
 	while (1)
 	{
 		/*
@@ -3166,6 +3174,7 @@ main(void)
 			}
 		}
 	}
+	#endif
 
 	return 0;
 }
