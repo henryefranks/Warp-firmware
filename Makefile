@@ -82,6 +82,7 @@ frdmkl03:
 	mkdir -p build/ksdk1.1/work/boards/Warp
 	mkdir -p build/ksdk1.1/work/demos/Warp/src
 	mkdir -p build/ksdk1.1/work/demos/Warp/src/activity
+	mkdir -p build/ksdk1.1/work/demos/Warp/src/activity/reg
 	mkdir -p build/ksdk1.1/work/demos/Warp/armgcc/Warp
 	cp -r tools/sdk/ksdk1.1.0/*					build/ksdk1.1/work
 	cp src/boot/ksdk1.1.0/SEGGER*					build/ksdk1.1/work/demos/Warp/src/
@@ -100,7 +101,11 @@ frdmkl03:
 	cp src/boot/ksdk1.1.0/devRV8803C7.*				build/ksdk1.1/work/demos/Warp/src/
 	cp src/boot/ksdk1.1.0/devSSD1331.*				build/ksdk1.1/work/demos/Warp/src/
 	cp src/boot/ksdk1.1.0/devINA219.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/activity/*                build/ksdk1.1/work/demos/Warp/src/activity/
+
+	cp src/boot/ksdk1.1.0/activity/devMMA8451Q*     build/ksdk1.1/work/demos/Warp/src/activity/
+	cp src/boot/ksdk1.1.0/activity/simple_math*     build/ksdk1.1/work/demos/Warp/src/activity/
+	cp src/boot/ksdk1.1.0/activity/reg/*.h     		build/ksdk1.1/work/demos/Warp/src/activity/reg/
+
 	cd build/ksdk1.1/work/lib/ksdk_platform_lib/armgcc/KL03Z4 && ./clean.sh; ./build_release.sh
 	cd build/ksdk1.1/work/demos/Warp/armgcc/Warp && ./clean.sh; ./build_release.sh
 	@echo "\n\nNow, run\n\n\tmake load-warp\n\n"

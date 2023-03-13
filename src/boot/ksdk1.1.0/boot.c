@@ -193,7 +193,8 @@
 
 #if (WARP_BUILD_ENABLE_ACTIVITY)
 	#include "activity/devMMA8451Q.h"
-	volatile WarpSPIDeviceState			deviceMMA8451QState;
+	#include "activity/simple_math.h"
+	volatile WarpI2CDeviceState			deviceMMA8451QState;
 #endif
 
 
@@ -1563,6 +1564,7 @@ main(void)
 			);
 	CLOCK_SYS_UpdateConfiguration(CLOCK_CONFIG_INDEX_FOR_RUN, kClockManagerPolicyForcible);
 
+	#if (!WARP_BUILD_ENABLE_ACTIVITY)
 	/*
 	 *	Initialize RTC Driver (not needed on Glaux, but we enable it anyway for now
 	 *	as that lets us use the current sleep routines). NOTE: We also don't seem to
@@ -1580,6 +1582,7 @@ main(void)
 	warpBootDate.minute	= 0U;
 	warpBootDate.second	= 0U;
 	RTC_DRV_SetDatetime(0, &warpBootDate);
+	#endif
 
 	/*
 	 *	Setup Power Manager Driver
@@ -2076,7 +2079,27 @@ main(void)
 	#endif
 
 	#if (WARP_BUILD_ENABLE_ACTIVITY)
-		
+		devMMA8451Q_accel_reading_t data;
+		int angle;
+
+		if (devMMA8451Q_init(0x1D,	kWarpDefaultSupplyVoltageMillivoltsMMA8451Q) != kWarpStatusOK)
+		{
+			warpPrint("Config Error!");
+			while (1);
+		}
+
+		while (1)
+		{
+			data = devMMA8451Q_getAccel();
+			if (data.z)     angle = arctan(data.x, data.z);
+			else            angle = (data.x > 0) ? 90000 : -90000;
+
+			// warpPrint("x: %7d, y: %7d, z: %7d\n", data.x, data.y, data.z);
+			// warpPrint("angle: %d (deg/1000)\n\n", angle);
+			warpPrint("%6d\n", angle);
+			
+			OSA_TimeDelay(50);
+		}
 	#endif
 
 

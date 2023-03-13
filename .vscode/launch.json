@@ -29,8 +29,7 @@
             "program": "/Users/harryfranks/4B25/cw4/Warp-firmware/build/ksdk1.1/work/demos/Warp/armgcc/Warp/release/Warp.srec",
             "targetArchitecture": "ARM",
 
-            "stopAtEntry": true,
-            // "stopAtEntry": false,
+            "stopAtEntry": false,
             "serverStarted": "Connected to target",
             "serverLaunchTimeout": 5000,
 

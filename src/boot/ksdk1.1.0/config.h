@@ -35,9 +35,9 @@
 	POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define		WARP_BUILD_ENABLE_SEGGER_RTT_PRINTF		0
-#define		WARP_BUILD_BOOT_TO_CSVSTREAM			0
-#define		WARP_BUILD_BOOT_TO_VLPR				0
+#define		WARP_BUILD_ENABLE_SEGGER_RTT_PRINTF			1
+#define		WARP_BUILD_BOOT_TO_CSVSTREAM				0
+#define		WARP_BUILD_BOOT_TO_VLPR						0
 #define		WARP_BUILD_DISABLE_SUPPLIES_BY_DEFAULT		0
 
 /*
@@ -178,7 +178,7 @@ typedef enum
 	*/
 	kWarpDefaultPrintBufferSizeBytes			= 64,
 	kWarpMemoryCommonSpiBufferBytes				= 64,
-	kWarpSizesI2cBufferBytes				= 4,
+	kWarpSizesI2cBufferBytes				= 6,
 	kWarpSizesSpiBufferBytes				= 7,
 	kWarpSizesUartBufferBytes				= 8,
 	kWarpSizesBME680CalibrationValuesCount			= 41,
