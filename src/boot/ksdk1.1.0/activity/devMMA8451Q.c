@@ -70,6 +70,8 @@
 #include "reg/fifo.h"
 #include "reg/data.h"
 
+#include "simple_math.h"
+
 extern volatile WarpI2CDeviceState	deviceMMA8451QState;
 
 extern volatile uint32_t		gWarpI2cBaudRateKbps;
@@ -118,9 +120,9 @@ static const devMMA8451Q_ctrl_t cfg = {
 };
 
 static const devMMA8451Q_f_setup_t f_setup = {
-	/* disable FIFO */
+	/* enable FIFO circular buffer mode */
     .f_wmrk = 0,
-    .f_mode = fifo_disabled,
+    .f_mode = fifo_circular_buffer,
 };
 
 static const devMMA8451Q_xyz_data_cfg_t xyz_data_cfg = {
@@ -249,26 +251,24 @@ devMMA8451Q_init(
 
 	deviceMMA8451QState.i2cAddress					= i2cAddress;
 	deviceMMA8451QState.operatingVoltageMillivolts	= operatingVoltageMillivolts;
-
-	// status |= devMMA8451Q_writeReg(kWarpSensorConfigurationRegisterMMA8451QF_SETUP, 0x00);
-	// status |= devMMA8451Q_writeReg(kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1, 0x01);
-
-	// return status;
 	
-
-	for (uint8_t i = 0; i < 1; i++) {
-		status |= devMMA8451Q_writeReg(
-			kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1 + i,
-			cfg.raw_bytes[i]);
-	}
-
-	status |= devMMA8451Q_writeReg(
-		kWarpSensorConfigurationRegisterMMA8451QF_SETUP,
-		f_setup.raw_byte);
+	// for (uint8_t i = 0; i < 1; i++) {
+	// 	status |= devMMA8451Q_writeReg(
+	// 		kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1 + i,
+	// 		cfg.raw_bytes[i]);
+	// }
 
 	status |= devMMA8451Q_writeReg(
-		kWarpSensorConfigurationRegisterMMA8451QXYZ_DATA_CFG,
-		xyz_data_cfg.raw_byte);
+		kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1,
+		cfg.raw_bytes[0]);
+
+	// status |= devMMA8451Q_writeReg(
+	// 	kWarpSensorConfigurationRegisterMMA8451QF_SETUP,
+	// 	f_setup.raw_byte);
+
+	// status |= devMMA8451Q_writeReg(
+	// 	kWarpSensorConfigurationRegisterMMA8451QXYZ_DATA_CFG,
+	// 	xyz_data_cfg.raw_byte);
 
 	return status;
 }
@@ -276,7 +276,6 @@ devMMA8451Q_init(
 devMMA8451Q_accel_reading_t
 devMMA8451Q_getAccel(void)
 {
-    devMMA8451Q_data_t x, y, z;
 	devMMA8451Q_accel_reading_t data;
 	WarpStatus	i2cReadStatus;
 
@@ -308,4 +307,45 @@ devMMA8451Q_getAccel(void)
 	data.z = (data.z ^ (1 << 13)) - (1 << 13);
 
     return data;
+}
+
+int angle_buffer[10];
+bool angle_buffer_full = false;
+size_t wt_idx = 0;
+
+void
+devMMA8451Q_updateBuffer(void)
+{
+	WarpStatus status;
+	devMMA8451Q_f_status_t f_status;
+	devMMA8451Q_accel_reading_t data;
+
+	static int count = 0;
+
+	status = kWarpStatusOK;
+
+	status |= devMMA8451Q_readReg(
+		kWarpSensorConfigurationRegisterMMA8451QF_STATUS, 1);
+
+	f_status.raw_byte = deviceMMA8451QState.i2cBuffer[0];
+	// warpPrint("Count: %d\n", f_status.f_cnt);
+
+	for (uint8_t i = 0; i < f_status.f_cnt; i++)
+	{
+		/* record every 50th reading (1s period) */
+		data = devMMA8451Q_getAccel();
+		if (count == 0) {
+			int angle = arctan(data.x, data.z);
+			angle_buffer[wt_idx++] = angle;
+			if (wt_idx == 10) {
+				angle_buffer_full = true;
+				wt_idx = 0;
+			}
+		}
+
+		if (count == 49) count = 0;
+		else 			 count++;
+	}
+
+	return;
 }

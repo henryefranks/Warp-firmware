@@ -1376,6 +1376,28 @@ warpPrint(const char *fmt, ...)
 }
 
 int
+warpCheckKey(void)
+{
+	/*
+	 *	SEGGER'S implementation assumes the result of result of
+	 *	SEGGER_RTT_GetKey() is an int, so we play along.
+	 */
+	int		rttKey, bleChar = kWarpMiscMarkerForAbsentByte;
+
+	rttKey	= SEGGER_RTT_GetKey();
+
+	/*
+		*	NOTE: We ignore all chars on BLE except '0'-'9', 'a'-'z'/'A'-Z'
+		*/
+	if (!(bleChar > 'a' && bleChar < 'z') && !(bleChar > 'A' && bleChar < 'Z') && !(bleChar > '0' && bleChar < '9'))
+	{
+		bleChar = kWarpMiscMarkerForAbsentByte;
+	}
+
+	return ((rttKey < 0) && (bleChar == kWarpMiscMarkerForAbsentByte));
+}
+
+int
 warpWaitKey(void)
 {
 	/*
@@ -2082,24 +2104,92 @@ main(void)
 		devMMA8451Q_accel_reading_t data;
 		int angle;
 
-		if (devMMA8451Q_init(0x1D,	kWarpDefaultSupplyVoltageMillivoltsMMA8451Q) != kWarpStatusOK)
+		while (devMMA8451Q_init(0x1D, kWarpDefaultSupplyVoltageMillivoltsMMA8451Q) != kWarpStatusOK)
 		{
-			warpPrint("Config Error!");
+			warpPrint("Config Error!\n");
+			warpPrint("Press any key to try again.\n");
+			warpWaitKey();
+		}
+
+		#if (WARP_BUILD_ENABLE_ACTIVITY_CSV)
+			warpPrint("\n");
+			warpPrint("CALIBRATION:\n");
+			warpPrint("============\n");
+			warpPrint("Place the device in the desired orientation...\n");
+
+            /*
+			do {
+				data = devMMA8451Q_getAccel();
+				angle = arctan(data.x, data.z);
+				warpPrint("Current angle: %5d     \r", angle / 1000);
+			}
+			while (warpCheckKey());
+
+			warpPrint("\n");
+            */
+
+			warpPrint(" === === BEGIN CSV === === \n");
+
+			warpPrint("accel x, accel y, accel z, angle\n");
+			for (size_t i = 0; i < 1000; i++) {
+				data = devMMA8451Q_getAccel();
+				angle = arctan(data.x, data.z);
+				warpPrint(
+					"%d, %d, %d, %d\n",
+					data.x, data.y, data.z, angle
+				);
+			}
+
+			warpPrint(" === ===  END CSV  === === \n");
+
 			while (1);
-		}
+		#else
+			const int ref_angle[10] = {
+				-1000, -778, -556, -333, -111, 111, 333, 556, 778, 1000
+			};
 
-		while (1)
-		{
-			data = devMMA8451Q_getAccel();
-			if (data.z)     angle = arctan(data.x, data.z);
-			else            angle = (data.x > 0) ? 90000 : -90000;
+			const float vars[10] = {
+				2.59955321e6, 2.59955301e6,
+				2.59955292e6, 2.59955289e6,
+				2.59955289e6, 2.59955289e6,
+				2.59955289e6, 2.59955292e6,
+				2.59955301e6, 2.59955321e6
+			};
 
-			// warpPrint("x: %7d, y: %7d, z: %7d\n", data.x, data.y, data.z);
-			// warpPrint("angle: %d (deg/1000)\n\n", angle);
-			warpPrint("%6d\n", angle);
-			
-			OSA_TimeDelay(50);
-		}
+			int last_wt_idx = -1;
+
+			warpPrint("Waiting for buffer to fill...\n");
+			while (1)
+			{
+				devMMA8451Q_updateBuffer();
+
+				if (!angle_buffer_full || wt_idx == last_wt_idx) continue;
+				/* don't bother processing if no new data */
+				last_wt_idx = wt_idx;
+
+				float sum, prod;
+
+				sum = 0;
+				prod = 1;
+
+				for (int i = 0; i < 10; i++) {
+					int idx = (((int)wt_idx - i - 1) % 10);
+					if (idx < 0) idx += 10;
+
+					int angle = angle_buffer[idx];
+
+					// sum += 1 / (1 + exp((float) 2.0f * angle * ref_angle[i] / vars[i]));
+					float e1 = exp((float) 2.0f * angle * ref_angle[i] / vars[i]);
+					float e2 = exp((float) -2.0f * angle * ref_angle[i] / vars[i]);
+					prod *= (1 + e1) / (1 + e2);
+				}
+
+				int ave_p_percent = (int) (100.0f / (1 + prod));
+				warpPrint("Probaility of raising: %d\%\n\n", ave_p_percent);
+
+				OSA_TimeDelay(250);
+			}
+		#endif
 	#endif
 
 

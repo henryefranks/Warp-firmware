@@ -79,6 +79,7 @@
  * ACTIVITY DETECTION
  */
 #define 	WARP_BUILD_ENABLE_ACTIVITY			1
+#define 	WARP_BUILD_ENABLE_ACTIVITY_CSV		0
 
 /*
  *	Force the required configuration if WARP_BUILD_ENABLE_GLAUX_VARIANT is set
