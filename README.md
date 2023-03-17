@@ -81,6 +81,12 @@ The firmware prints, every second, the current estimates for each class over
 the previous 10 seconds, as well as computed angles and probabilities for
 each data point.
 
+## To Build
+
+1. follow instructions in the original repo to configure paths correctly.
+2. run `source setup.sh` to set environment variables
+3. run `make` (this runs `make clean frdmkl03 load-warp`) to build and run
+
 ---
 
 Original Code by Phillip Stanley-Marbell. See `LICENSE.txt` for more info
