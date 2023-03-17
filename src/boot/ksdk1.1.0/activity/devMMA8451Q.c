@@ -80,6 +80,7 @@ extern volatile uint32_t		gWarpSupplySettlingDelayMilliseconds;
 
 extern void warpEnableI2Cpins(void);
 
+/* config registers x5 */
 static const devMMA8451Q_ctrl_t cfg = {
     .active        = fs_mode_active,
     .f_read        = fr_mode_normal,
@@ -119,12 +120,14 @@ static const devMMA8451Q_ctrl_t cfg = {
     .int_cfg_aslp   = cfg_flag_disabled,
 };
 
+/* fifo setup */
 static const devMMA8451Q_f_setup_t f_setup = {
 	/* enable FIFO circular buffer mode */
     .f_wmrk = 0,
     .f_mode = fifo_circular_buffer,
 };
 
+/* xyz data config */
 static const devMMA8451Q_xyz_data_cfg_t xyz_data_cfg = {
     .fs      = fsr_2g,
     .hpf_out = data_flag_disabled,
@@ -252,15 +255,11 @@ devMMA8451Q_init(
 	deviceMMA8451QState.i2cAddress					= i2cAddress;
 	deviceMMA8451QState.operatingVoltageMillivolts	= operatingVoltageMillivolts;
 	
-	// for (uint8_t i = 0; i < 1; i++) {
-	// 	status |= devMMA8451Q_writeReg(
-	// 		kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1 + i,
-	// 		cfg.raw_bytes[i]);
-	// }
-
-	status |= devMMA8451Q_writeReg(
-		kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1,
-		cfg.raw_bytes[0]);
+	for (uint8_t i = 0; i < 1; i++) {
+		status |= devMMA8451Q_writeReg(
+			kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1 + i,
+			cfg.raw_bytes[i]);
+	}
 
 	status |= devMMA8451Q_writeReg(
 		kWarpSensorConfigurationRegisterMMA8451QF_SETUP,
@@ -273,12 +272,14 @@ devMMA8451Q_init(
 	return status;
 }
 
+/* get acceleration reading from device */
 devMMA8451Q_accel_reading_t
 devMMA8451Q_getAccel(void)
 {
 	devMMA8451Q_accel_reading_t data;
 	WarpStatus	i2cReadStatus;
 
+	/* registers auto-increment, so write 0x01 and read x6 for all data */
     i2cReadStatus = devMMA8451Q_readReg(0x01, 6);
 
 	if (i2cReadStatus != kWarpStatusOK) {
@@ -304,19 +305,27 @@ int angle_buffer[10];
 bool angle_buffer_full = false;
 size_t wt_idx = 0;
 
+/* update circular buffer with new FIFO data */
 void
 devMMA8451Q_updateBuffer(void)
 {
+	/* Using this circular buffer significantly relaxes timing constraints.  */
+	/* The FIFO fills up at 50 Hz (this is an easy number to work with),     */
+	/* and every so often this function reads multiple data out of it, and   */
+	/* writes every 50th value into a rudimentary circular buffer (this      */
+	/* gives a 1Hz sample frequency. This circular buffer can be read        */
+	/* separately from another function, and by tracking the current write   */
+	/* pointer we can easily check if there's fresh data.                    */
 	WarpStatus status;
 	devMMA8451Q_f_status_t f_status;
 	devMMA8451Q_accel_reading_t data;
 
-	int ret;
-
+	/* allows us to track every 50th value */
 	static int count = 0;
 
 	status = kWarpStatusOK;
 
+	/* fifo count is held in F_STATUS */
 	status |= devMMA8451Q_readReg(
 		kWarpSensorConfigurationRegisterMMA8451QF_STATUS, 1);
 
@@ -328,20 +337,23 @@ devMMA8451Q_updateBuffer(void)
 		/* record every 50th reading (1s period) */
 		data = devMMA8451Q_getAccel();
 		if (count == 0) {
+			/* calculate angle only when we're writing to buffer */
 			int angle = arctan(data.x, data.z);
 			angle_buffer[wt_idx++] = angle;
 			if (wt_idx == 10) {
-				angle_buffer_full = true;
+				/* circular logic */
 				wt_idx = 0;
+
+				/* flag to let other functions know all data are now valid */
+				/* set true multiple times, but is only false initially */
+				angle_buffer_full = true;
 			}
 		}
 
-		if (i == f_status.f_cnt - 1)
-			ret = data.y;
-
+		/* wraparound logic */
 		if (count == 49) count = 0;
 		else 			 count++;
 	}
 
-	return data.y;
+	return;
 }

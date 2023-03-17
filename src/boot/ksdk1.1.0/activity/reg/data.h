@@ -1,4 +1,9 @@
+/* REGISTER TYPE DEFINITIONS */
+/* OUT_X_XSB --- 0x01-0x06   */
+/* XYZ_DATA_CFG --- 0x0E     */
+
 #include <stdint.h>
+
 
 typedef uint8_t devMMA8451Q_data_void_t;
 
@@ -8,6 +13,8 @@ typedef enum {
 } devMMA8451Q_data_flag_t;
 
 typedef union {
+    /* BROKEN IMPLEMENTATION: DO NOT USE */
+    /* reading .data doesn't sign extend properly */
     struct {
         int16_t      :  2;
         int16_t data : 14;

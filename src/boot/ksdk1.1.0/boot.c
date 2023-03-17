@@ -2099,6 +2099,15 @@ main(void)
 	#endif
 
 	#if (WARP_BUILD_ENABLE_ACTIVITY)
+		/* +---------------------+ */
+		/* | ACTIVITY CLASSIFIER | */
+		/* +---------------------+ */
+
+		/* Wrist raising/lowering detection.
+		 * Uses a circular buffer in devMMA8451Q.c to provide readings
+		 * *exactly* every second, then processes batches of 10 at once.
+		 */
+
 		devMMA8451Q_accel_reading_t data;
 		int angle;
 
@@ -2109,13 +2118,19 @@ main(void)
 			warpWaitKey();
 		}
 
+		/* enable this flag to dump CSV and not classify activity */
 		#if (WARP_BUILD_ENABLE_ACTIVITY_CSV)
+			/* CSV DUMP */
+			/* it is useful to quickly obtain large datasets
+				to characterise measurement uncertainty */
+
 			warpPrint("\n");
 			warpPrint("CALIBRATION:\n");
 			warpPrint("============\n");
 			warpPrint("Place the device in the desired orientation...\n");
 
-            /*
+			/* wait for user to initiate CSV reading */
+			/* comment this out if you want to use JLinkRTTLogger */
 			do {
 				data = devMMA8451Q_getAccel();
 				angle = arctan(data.x, data.z);
@@ -2124,12 +2139,15 @@ main(void)
 			while (warpCheckKey());
 
 			warpPrint("\n");
-            */
+            
 
 			warpPrint(" === === BEGIN CSV === === \n");
 
+			/* change 5000 to whatever */
+			static const size_t num_readings = 5000;
+
 			warpPrint("accel x, accel y, accel z, angle\n");
-			for (size_t i = 0; i < 1000; i++) {
+			for (size_t i = 0; i < num_readings; i++) {
 				data = devMMA8451Q_getAccel();
 				angle = arctan(data.x, data.z);
 				warpPrint(
@@ -2142,15 +2160,16 @@ main(void)
 
 			while (1);
 		#else
-			/* step from -1 to 1 represents wrist raising */
+			/*  step from -1 to 1 represents wrist raising  */
+			/* steps have to be small to give balanced pdfs */
 			const int ref_angle[10] = {
-				-1000, -1000, -1000, -1000, -1000,
-				 1000,  1000,  1000,  1000,  1000
+				-1000, -1000, -1000, -1000, -1000, /* t = 0-4 */
+				 1000,  1000,  1000,  1000,  1000  /* t = 5-9 */
 			};
 
 			/* variance of accelerometer readings */
 			/* includes normalising factor of 1000 */
-			const float var = 8528001.317;
+			const float var = 8528.001317 * 1000.0f;
 
 			const float output_resolution = 1000;
 
@@ -2170,12 +2189,14 @@ main(void)
 
 				warpPrint("=== START DATA ===\n\n");
 
+				/* profile time taken to perform measurment using RTC */
 				#if (WARP_BUILD_ENABLE_PROFILING)
 					warpPrint("Measurement number, RTC->TSR, RTC->TPR,\t\t");
 					warpPrint(" %12d, %6d\n", RTC->TSR, RTC->TPR);
 				#endif
 
 				for (int i = 0; i < 10; i++) {
+					/* horrible cicrulcar buffer arithmetic */
 					int idx = (((int)wt_idx - i - 1) % 10);
 					if (idx < 0) idx += 10;
 
@@ -2186,12 +2207,13 @@ main(void)
 						int angle = angle_buffer[idx];
 					#endif
 
-					warpPrint("Buffered angle %2d of 10: %10d", i+1, angle);
-
 					/* sign of exponent is defined by angle sign convention */
 					temp_p = 1 / (1 + exp(2.0f * angle * ref_angle[i] / var));
 
+					/* sum first, then divide later to take mean */
 					p += temp_p;
+
+					warpPrint("Buffered angle %2d of 10: %10d", i+1, angle);
 					warpPrint(" -> probability %2d of 10: %7d\n",
 						i+1, (int)(temp_p * output_resolution));
 				}
