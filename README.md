@@ -4,12 +4,9 @@
 ---
 
 This is a heavily-edited version of the Warp firmware, replacing much of
-the original codebase (including the menu) to reduce both file and program
-sizes.
+the original codebase (including the menu) to reduce program size.
 
-See [my GitHub](https://github.com/henryefranks/Warp-firmware) for
-a complete implementation (with files only `#if`'d out, and not outright
-deleted). Or, see
+See
 [the original repo](https://github.com/[physical-computation]/Warp-firmware)
 for the original codebase this is built on.
 
