@@ -2,7 +2,7 @@
  * QUICK MATHS
  *
  * Some questionably-implemented maths functions to help calculate angles.
- * the flag ENABLE_FP allows for arctan to be calcualted with an approximate
+ * The flag ENABLE_FP allows for arctan to be calcualted with an approximate
  * scaled integer implementation, but there is no benefit to this and
  * performance is pretty cromulent with floating points.
  *
@@ -59,6 +59,8 @@ arctan(int16_t a_h, int16_t a_v)
             }
         }
     #else
+        /* horrible integer implementation */
+        /* this works, but is best avoided */
         int x, angle;
 
         x = (abs(a_h) > abs(a_v)) ?
@@ -78,5 +80,6 @@ arctan(int16_t a_h, int16_t a_v)
         }
     #endif
 
+    /* rounding is non-ideal, could just return a float */
     return angle_deg;
 }
