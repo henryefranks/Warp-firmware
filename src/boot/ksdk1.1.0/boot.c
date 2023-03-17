@@ -1586,7 +1586,6 @@ main(void)
 			);
 	CLOCK_SYS_UpdateConfiguration(CLOCK_CONFIG_INDEX_FOR_RUN, kClockManagerPolicyForcible);
 
-	#if (!WARP_BUILD_ENABLE_ACTIVITY)
 	/*
 	 *	Initialize RTC Driver (not needed on Glaux, but we enable it anyway for now
 	 *	as that lets us use the current sleep routines). NOTE: We also don't seem to
@@ -1604,7 +1603,6 @@ main(void)
 	warpBootDate.minute	= 0U;
 	warpBootDate.second	= 0U;
 	RTC_DRV_SetDatetime(0, &warpBootDate);
-	#endif
 
 	/*
 	 *	Setup Power Manager Driver
@@ -2144,19 +2142,20 @@ main(void)
 
 			while (1);
 		#else
+			/* step from -1 to 1 represents wrist raising */
 			const int ref_angle[10] = {
-				-1000, -778, -556, -333, -111, 111, 333, 556, 778, 1000
+				-1000, -1000, -1000, -1000, -1000,
+				 1000,  1000,  1000,  1000,  1000
 			};
 
-			const float vars[10] = {
-				2.59955321e6, 2.59955301e6,
-				2.59955292e6, 2.59955289e6,
-				2.59955289e6, 2.59955289e6,
-				2.59955289e6, 2.59955292e6,
-				2.59955301e6, 2.59955321e6
-			};
+			/* variance of accelerometer readings */
+			/* includes normalising factor of 1000 */
+			const float var = 8528001.317;
+
+			const float output_resolution = 1000;
 
 			int last_wt_idx = -1;
+			float p, temp_p;
 
 			warpPrint("Waiting for buffer to fill...\n");
 			while (1)
@@ -2167,25 +2166,51 @@ main(void)
 				/* don't bother processing if no new data */
 				last_wt_idx = wt_idx;
 
-				float sum, prod;
+				p = 0.0f;
 
-				sum = 0;
-				prod = 1;
+				warpPrint("=== START DATA ===\n\n");
+
+				#if (WARP_BUILD_ENABLE_PROFILING)
+					warpPrint("Measurement number, RTC->TSR, RTC->TPR,\t\t");
+					warpPrint(" %12d, %6d\n", RTC->TSR, RTC->TPR);
+				#endif
 
 				for (int i = 0; i < 10; i++) {
 					int idx = (((int)wt_idx - i - 1) % 10);
 					if (idx < 0) idx += 10;
 
-					int angle = angle_buffer[idx];
+					/* account for either handedness */
+					#if (WARP_BUILD_WATCH_ON_LEFT_ARM)
+						int angle = -angle_buffer[idx];
+					#else
+						int angle = angle_buffer[idx];
+					#endif
 
-					// sum += 1 / (1 + exp((float) 2.0f * angle * ref_angle[i] / vars[i]));
-					float e1 = exp((float) 2.0f * angle * ref_angle[i] / vars[i]);
-					float e2 = exp((float) -2.0f * angle * ref_angle[i] / vars[i]);
-					prod *= (1 + e1) / (1 + e2);
+					warpPrint("Buffered angle %2d of 10: %10d", i+1, angle);
+
+					/* sign of exponent is defined by angle sign convention */
+					temp_p = 1 / (1 + exp(2.0f * angle * ref_angle[i] / var));
+
+					p += temp_p;
+					warpPrint(" -> probability %2d of 10: %7d\n",
+						i+1, (int)(temp_p * output_resolution));
 				}
 
-				int ave_p_percent = (int) (100.0f / (1 + prod));
-				warpPrint("Probaility of raising: %d\%\n\n", ave_p_percent);
+				p /= 10; /* take average */
+
+				/* print in units of 0.001 (dimensionless probability) */
+				p *= output_resolution;
+
+				warpPrint("\nProbabilities:\n");
+				warpPrint("raising: %d\n", (int)p);
+				warpPrint("lowering: %d\n\n", (int)(output_resolution - p));
+
+				#if (WARP_BUILD_ENABLE_PROFILING)
+					warpPrint("Measurement number, RTC->TSR, RTC->TPR,\t\t");
+					warpPrint(" %12d, %6d\n", RTC->TSR, RTC->TPR);
+				#endif
+
+				warpPrint("===  END DATA  ===\n\n");
 
 				OSA_TimeDelay(250);
 			}

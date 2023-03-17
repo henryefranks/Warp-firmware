@@ -262,13 +262,13 @@ devMMA8451Q_init(
 		kWarpSensorConfigurationRegisterMMA8451QCTRL_REG1,
 		cfg.raw_bytes[0]);
 
-	// status |= devMMA8451Q_writeReg(
-	// 	kWarpSensorConfigurationRegisterMMA8451QF_SETUP,
-	// 	f_setup.raw_byte);
+	status |= devMMA8451Q_writeReg(
+		kWarpSensorConfigurationRegisterMMA8451QF_SETUP,
+		f_setup.raw_byte);
 
-	// status |= devMMA8451Q_writeReg(
-	// 	kWarpSensorConfigurationRegisterMMA8451QXYZ_DATA_CFG,
-	// 	xyz_data_cfg.raw_byte);
+	status |= devMMA8451Q_writeReg(
+		kWarpSensorConfigurationRegisterMMA8451QXYZ_DATA_CFG,
+		xyz_data_cfg.raw_byte);
 
 	return status;
 }
@@ -288,21 +288,12 @@ devMMA8451Q_getAccel(void)
 
 	data.error = false;
 
-    // x.msb = deviceMMA8451QState.i2cBuffer[0];
-    // x.lsb = deviceMMA8451QState.i2cBuffer[1];
-	// data.x = x.data;
 	data.x = ((deviceMMA8451QState.i2cBuffer[0] & 0xFF) << 6) | (deviceMMA8451QState.i2cBuffer[1] >> 2);
 	data.x = (data.x ^ (1 << 13)) - (1 << 13);
     
-    // y.msb = deviceMMA8451QState.i2cBuffer[2];
-    // y.lsb = deviceMMA8451QState.i2cBuffer[3];
-	// data.y = y.data;
 	data.y = ((deviceMMA8451QState.i2cBuffer[2] & 0xFF) << 6) | (deviceMMA8451QState.i2cBuffer[3] >> 2);
 	data.y = (data.y ^ (1 << 13)) - (1 << 13);
 
-    // z.msb = deviceMMA8451QState.i2cBuffer[4];
-    // z.lsb = deviceMMA8451QState.i2cBuffer[5];
-	// data.z = z.data;
 	data.z = ((deviceMMA8451QState.i2cBuffer[4] & 0xFF) << 6) | (deviceMMA8451QState.i2cBuffer[5] >> 2);
 	data.z = (data.z ^ (1 << 13)) - (1 << 13);
 
@@ -319,6 +310,8 @@ devMMA8451Q_updateBuffer(void)
 	WarpStatus status;
 	devMMA8451Q_f_status_t f_status;
 	devMMA8451Q_accel_reading_t data;
+
+	int ret;
 
 	static int count = 0;
 
@@ -343,9 +336,12 @@ devMMA8451Q_updateBuffer(void)
 			}
 		}
 
+		if (i == f_status.f_cnt - 1)
+			ret = data.y;
+
 		if (count == 49) count = 0;
 		else 			 count++;
 	}
 
-	return;
+	return data.y;
 }

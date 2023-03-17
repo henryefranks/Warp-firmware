@@ -21,4 +21,5 @@ devMMA8451Q_init(
 devMMA8451Q_accel_reading_t
 devMMA8451Q_getAccel(void);
 
-/* TODO: offset correction */
+void
+devMMA8451Q_updateBuffer(void);
